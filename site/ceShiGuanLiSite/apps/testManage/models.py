@@ -8,12 +8,13 @@ import uuid
 class Level(models.Model):
     title = models.CharField(max_length = 200)
     id = models.UUIDField(primary_key = True, default = uuid.uuid4, editable = False)
-    parent = models.UUIDField()
+    parent = models.ForeignKey('self', on_delete = models.CASCADE)
 
 class LevelTypes(models.Model):
     title = models.CharField(max_length = 200)
     id = models.UUIDField(primary_key = True, default = uuid.uuid4, editable = False)
-    parent = models.UUIDField()
+    prevLevel = models.ForeignKey('self', on_delete = models.PROTECT)
+    nextLevel = models.ForeignKey('self', on_delete = models.PROTECT)
 
 class TestObject(models.Model):
     id = models.UUIDField(primary_key = True, default = uuid.uuid4, editable = False)
