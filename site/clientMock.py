@@ -62,4 +62,5 @@ def putTestObjectCategory():
 #pp(putTestObjectCategory())
 #pp(getTestObjectCategories())
 #pp(getOrphanTestCategories())
-pp(getTestObjectCategories())
+#pp(getTestObjectCategories())
+pp(getTestObjectsByApi())
