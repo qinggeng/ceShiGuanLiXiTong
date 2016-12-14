@@ -9,47 +9,11 @@ import os.path
 import json
 from prettyprint import pp
 
+from libs.resturl import uriProcessingChain
+
 def getUriPrefixByRequest(request):
     prefix = u'{scheme}://{host}{path}'.format(scheme = request.scheme, host = request.get_host(), path = request.path)
     return prefix
-
-def getTestObjects(uriPrefix):
-    allObjects = TestObject.objects.all()
-    return map(lambda x: {'uri': uriPrefix + '/' + unicode(x.id), 'id': unicode(x.id), 'title': x.title, 'description': x.description}, allObjects)
-
-@csrf_exempt 
-@require_http_methods(['GET'])
-def testObjects(request):
-    prefix = u'{scheme}://{host}{path}'.format(scheme = request.scheme, host = request.get_host(), path = request.path)
-    # TODO handle permissions by request
-    retStr = json.dumps(getTestObjects(prefix))
-    resp = HttpResponse(retStr, content_type = 'application/json')
-    return resp
-
-"""
-@restful(dispatcher, method)
-"""
-def testObject(request, objectid):
-    if request.method == 'GET':
-        return getTestObject(request, objectid)
-    pass
-
-def getTestObject(request, objectid):
-    testObject = TestObject.objects.filter(id = objectid)[0]
-    ret = {
-        'uri': getUriPrefixByRequest(request),
-        'title': testObject.title,
-        'id': unicode(testObject.id),
-        'description': testObject.description,
-        'categoryLevels': getUriPrefixByRequest(request) + '/' + 'category-levels',
-        'categories': getUriPrefixByRequest(request) + '/' + 'categories',
-        'reports': getUriPrefixByRequest(request) + '/' + 'reports',
-        'testcases': getUriPrefixByRequest(request) + '/' + 'testcases',
-        'testPlans': getUriPrefixByRequest(request) + '/' + 'test-plans',
-    }
-    retStr = json.dumps(ret)
-    resp = HttpResponse(retStr, content_type = 'application/json')
-    return resp
 
 @csrf_exempt
 def testCategoryManage(request, objectid, propName):
@@ -71,27 +35,6 @@ def getTestObjectCategoryProp(request, objectid, propName):
         resp = HttpResponse(retStr, content_type = 'application/json')
         return resp
 
-
-@csrf_exempt
-def testObjectCategories(request, objectid):
-    if request.method == 'GET':
-        return getTestObjectCategories(request, objectid)
-    if request.method == 'PUT':
-        return putTestObjectCategories(request, objectid)
-
-def getTestObjectCategories(request, objectid):
-    testObject = TestObject.objects.filter(id = objectid)[0]
-    try:
-        ret = map(lambda x: dict({
-                    'uri': getUriPrefixByRequest(request) + '/' + unicode(x.id),
-                },
-                **categoryJsonify(getUriPrefixByRequest(request), x)),
-            testObject.testLevels.all())
-    except Exception, e:
-        ret = []
-    retStr = json.dumps(ret)
-    resp = HttpResponse(retStr, content_type = 'application/json')
-    return resp
 
 def putTestObjectCategories(request, objectid):
     categoryIds = json.loads(request.body)
@@ -124,4 +67,103 @@ def categoryJsonify(uriPrefix, x):
             #level type uri
             'levelType': '',
     }
+
+
+def testObjectListing(useless):
+    objects = TestObject.objects
+    return objects
+
+def getTestObjectById(objects, oid):
+    ret =  objects.get(id = oid)
+    return ret
+
+def getTestObjectCategories(testObject, dummy):
+    ret = testObject.testLevels
+    return ret
+
+kPattern  = 'pattern'
+kChildren = 'children'
+kHandler  = 'handler'
+
+uriChain = [{
+    kPattern: 'testObjects',
+    kHandler: testObjectListing,
+    kChildren: [{
+        kPattern  : '[0-9a-f-]{36}',
+        kHandler  : getTestObjectById,
+        kChildren : [{
+            kPattern  : 'categories',
+            kHandler  : getTestObjectCategories,
+            kChildren : []},
+            ],},],
+}]
+
+
+def testUriChain():
+    from serializers import obj2json
+    uri = "testObjects/67a01e17-9e8e-4d99-973b-170d74110a4b"
+    ret = uriProcessingChain(uri, uriChain)
+    ret = obj2json(ret)
+    pp(ret)
+    ret = type(ret)
+
+from serializers import obj2json
+
+def injectUriForTestObject(prefix, x):
+    def ap(key):
+        x[key] = prefix + '/' + x[key]
+    x['uri'] = prefix
+    ap('categories')
+    ap('categoryLevels')
+    ap('reports')
+    ap('testcases')
+    ap('testPlans')
+
+def injectUriForTestObjects(prefix, objects):
+    return map(lambda x: injectUriForTestObject(prefix + '/' + x['id'], x), objects)
+
+def injectUriForTestLevel(prefix, x):
+    def ap(key):
+        x[key] = prefix + '/' + x[key]
+    x['uri'] = prefix
+    ap('subCategories')
+
+def injectUriForTestLevels(prefix, objects):
+    return map(lambda x: injectUriForTestLevel(prefix + '/' + x['id'], x), objects)
+
+uriInjectors = {
+    TestObject         : injectUriForTestObject,
+    TestObject.objects : injectUriForTestObjects,
+    TestObject.testLevels.related_manager_cls: injectUriForTestLevels,
+    Level: injectUriForTestLevel,
+}
+
+def injectUri(injector, targets, prefix):
+    if None == injector:
+        return targets
+    injector(prefix, targets)
+    return targets
+
+
+def apiRoot(request, uri):
+    obj = uriProcessingChain(uri, uriChain)
+    print obj
+    if (None == obj):
+        response = HttpResponse()
+        response.status_code = 404
+        return response
+
+    ret = obj2json(obj)
+    objType = type(obj)
+    print 'objType', objType
+    pp(ret)
+    injector = None
+    if obj in uriInjectors:
+        injector = uriInjectors[obj]
+    elif objType in uriInjectors:
+        injector = uriInjectors[objType]
+    ret = injectUri(injector, ret, getUriPrefixByRequest(request))
+    ret = json.dumps(ret, ensure_ascii = False)
+    response = HttpResponse(ret)
+    return response
 

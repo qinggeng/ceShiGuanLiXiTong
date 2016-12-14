@@ -28,7 +28,9 @@ def createNewLevel():
 def getTestObjectsByApi():
     url = 'http://192.168.99.100:8081/test-man/api/v0/testObjects?filter=abc'
     resp = requests.get(url)
-    pp(resp.text)
+    ret = json.loads(resp.text)
+    #pp(ret)
+    return ret
 
 def getTestObjectByApi(log = False):
     url = 'http://192.168.99.100:8081/test-man/api/v0/testObjects?filter=abc'
@@ -63,4 +65,9 @@ def putTestObjectCategory():
 #pp(getTestObjectCategories())
 #pp(getOrphanTestCategories())
 #pp(getTestObjectCategories())
-pp(getTestObjectsByApi())
+#obj = getTestObjectsByApi()
+#pp(obj)
+#obj = getTestObjectByApi()
+#pp(obj)
+obj = getTestObjectCategories()
+pp(obj)

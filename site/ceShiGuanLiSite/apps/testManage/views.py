@@ -10,7 +10,6 @@ from utils import                \
     getAllTestLevelTypes,        \
     addLevelTypeToTestObject
 
-from libs.resturl import uriProcessingChain
 
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt                                          

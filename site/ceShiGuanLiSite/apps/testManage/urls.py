@@ -14,6 +14,7 @@ urlpatterns = [
     url('^allTestCases$', views.allTestcases),
     url('^allTestObjects$', views.allTestObjects),
     url('^allTestLevelTypes$', views.allTestLevelTypes),
+    url('^api/v0/(.*)$', apiViews.apiRoot),
 #    url('^api/v0/testObjects$', apiViews.testObjects),
 #    url('^api/v0/testObjects/([^/]+)$', apiViews.testObject),
 #    url('^api/v0/testObjects/([^/]+)/categories$', apiViews.testObjectCategories),

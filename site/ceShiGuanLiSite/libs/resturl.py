@@ -43,17 +43,22 @@ def uriProcessingChain(uri, chain, prevResult = None):
         handler = head[kHandler]
         try:
             if None == prevResult:
-                result = handler(*(list(m.groups())))
+                result = handler(*(m.group(), ))
             else:
-                result = handler(*([prevResult] + list(m.groups())))
+                result = handler(*(prevResult, m.group()))
             if kChildren in head:
                 return uriProcessingChain(uri[m.end():], head[kChildren], result)
             else:
                 return result
         except Exception, e:
             raise
+    if len(uri) == 0:
+        return prevResult
+    return None
 
 def canonicalUri(uri):
+    if len(uri) == 0:
+        return uri
     if uri[0] == '/':
         uri = uri[1:]
     if uri[-1] == '/':
